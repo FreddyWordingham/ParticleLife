@@ -10,7 +10,7 @@ const INIT_WINDOW_WIDTH: f32 = 800.0;
 const INIT_WINDOW_HEIGHT: f32 = 600.0;
 const PARTICLE_SIZE: f32 = 5.0;
 const PARTICLE_SPECIES: u8 = 6;
-const PARTICLE_COUNT: usize = 10000;
+const PARTICLE_COUNT: usize = 100;
 
 // == Main ==
 fn main() {
@@ -116,24 +116,24 @@ fn move_particles(mut query: Query<(&mut Transform, &Velocity)>) {
 }
 
 fn confine_particles(
-    mut query: Query<(&mut Transform, &Velocity)>,
+    mut query: Query<&mut Transform>,
     window_query: Query<&Window, With<PrimaryWindow>>,
 ) {
     let window = window_query.get_single().unwrap();
     let width = window.width();
     let height = window.height();
 
-    for (mut transform, velocity) in query.iter_mut() {
+    for mut transform in query.iter_mut() {
         if transform.translation.x < 0.0 {
-            transform.translation.x = 0.0;
-        } else if transform.translation.x > width {
             transform.translation.x = width;
+        } else if transform.translation.x > width {
+            transform.translation.x = 0.0;
         }
 
         if transform.translation.y < 0.0 {
-            transform.translation.y = 0.0;
-        } else if transform.translation.y > height {
             transform.translation.y = height;
+        } else if transform.translation.y > height {
+            transform.translation.y = 0.0;
         }
     }
 }
