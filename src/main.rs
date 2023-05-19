@@ -133,11 +133,12 @@ fn spawn_particles(
     }
 }
 
-fn update_velocities(mut query: Query<(&mut Velocity, &Species, &Transform)>) {}
+fn update_velocities(mut query: Query<(&mut Velocity, &Species, &Transform)>, time: Res<Time>) {}
 
-fn update_positions(mut query: Query<(&mut Transform, &Velocity)>) {
+fn update_positions(mut query: Query<(&mut Transform, &Velocity)>, time: Res<Time>) {
+    let dt = time.delta_seconds();
     for (mut transform, velocity) in query.iter_mut() {
-        transform.translation.x += velocity.x;
-        transform.translation.y += velocity.y;
+        transform.translation.x += velocity.x * dt;
+        transform.translation.y += velocity.y * dt;
     }
 }
