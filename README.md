@@ -1,2 +1,3 @@
-# ParticleLife
-Emergent behaviour simulation
+# Particle Life
+
+Emergent behavior simulation
