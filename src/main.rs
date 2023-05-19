@@ -42,6 +42,7 @@ impl Plugin for SimulationPlugin {
             .init_resource::<AttractionMatrix>()
             .add_startup_system(spawn_camera)
             .add_startup_system(spawn_particles)
+            .add_systems((update_velocities, update_positions).chain())
             .add_system(close_on_esc);
     }
 }
@@ -129,5 +130,14 @@ fn spawn_particles(
                 ..default()
             },
         ));
+    }
+}
+
+fn update_velocities(mut query: Query<(&mut Velocity, &Species, &Transform)>) {}
+
+fn update_positions(mut query: Query<(&mut Transform, &Velocity)>) {
+    for (mut transform, velocity) in query.iter_mut() {
+        transform.translation.x += velocity.x;
+        transform.translation.y += velocity.y;
     }
 }
