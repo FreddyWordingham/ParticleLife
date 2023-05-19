@@ -8,11 +8,12 @@ use rand::prelude::*;
 // == Settings ==
 const INIT_WINDOW_WIDTH: f32 = 1600.0;
 const INIT_WINDOW_HEIGHT: f32 = 1200.0;
+const WINDOW_CLEAR_COLOUR: Color = Color::rgb(0.1, 0.1, 0.1);
 
-const TOTAL_SPECIES: usize = 6;
+const TOTAL_SPECIES: usize = 10;
 
-// const TOTAL_PARTICLES: usize = 1000;
-// const PARTICLE_SIZE: f32 = 5.0;
+const TOTAL_PARTICLES: usize = 1000;
+const PARTICLE_RADIUS: f32 = 5.0;
 // const PARTICLE_MASS: f32 = 6.0;
 
 // const FRICTION_HALF_LIFE: f32 = 0.04;
@@ -37,8 +38,10 @@ fn main() {
 struct SimulationPlugin;
 impl Plugin for SimulationPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<AttractionMatrix>()
+        app.insert_resource(ClearColor(WINDOW_CLEAR_COLOUR))
+            .init_resource::<AttractionMatrix>()
             .add_startup_system(spawn_camera)
+            .add_startup_system(spawn_particles)
             .add_system(close_on_esc);
     }
 }
@@ -52,7 +55,8 @@ impl Default for AttractionMatrix {
         for i in 0..TOTAL_SPECIES {
             for j in 0..TOTAL_SPECIES {
                 coefficients[i][j] = (random::<f32>() * 2.0) - 1.0;
-                print!("{:.2} ", coefficients[i][j]);
+                let s = format!("{:.2} ", coefficients[i][j]);
+                print!("{:>8}", s);
             }
             println!("");
         }
@@ -62,6 +66,27 @@ impl Default for AttractionMatrix {
 }
 
 // == Components ==
+#[derive(Component)]
+struct Species(u8);
+
+impl Species {
+    #[inline]
+    #[must_use]
+    fn colour(&self) -> Color {
+        Color::Hsla {
+            hue: self.0 as f32 * 360.0 / TOTAL_SPECIES as f32,
+            saturation: 0.8,
+            lightness: 0.5,
+            alpha: 1.0,
+        }
+    }
+}
+
+#[derive(Component)]
+struct Velocity {
+    x: f32,
+    y: f32,
+}
 
 // == Systems ==
 fn spawn_camera(mut commands: Commands, query: Query<&Window, With<PrimaryWindow>>) {
@@ -73,4 +98,36 @@ fn spawn_camera(mut commands: Commands, query: Query<&Window, With<PrimaryWindow
         transform: Transform::from_xyz(width * 0.5, height * 0.5, 0.0),
         ..default()
     });
+}
+
+fn spawn_particles(
+    mut commands: Commands,
+    query: Query<&Window, With<PrimaryWindow>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+) {
+    let windows = query.get_single().unwrap();
+    let width = windows.width();
+    let height = windows.height();
+
+    for _ in 0..TOTAL_PARTICLES {
+        let x = (random::<f32>() * width * 0.5) + (width * 0.25);
+        let y = (random::<f32>() * height * 0.5) + (height * 0.25);
+
+        let species = Species(random::<u8>() % TOTAL_SPECIES as u8);
+        let colour = species.colour();
+
+        commands.spawn((
+            species,
+            Velocity { x: 0.0, y: 0.0 },
+            MaterialMesh2dBundle {
+                mesh: meshes
+                    .add(shape::Circle::new(PARTICLE_RADIUS).into())
+                    .into(),
+                material: materials.add(ColorMaterial::from(colour)),
+                transform: Transform::from_translation(Vec3::new(x, y, 0.0)),
+                ..default()
+            },
+        ));
+    }
 }
