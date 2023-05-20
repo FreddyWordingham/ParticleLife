@@ -29,5 +29,9 @@ cd ParticleLife
 Build and run the project using the Rust toolchain:
 
 ```shell
-cargo run --release
+cargo run --release this_is_the_seed
 ```
+
+Note you must give the simulation a seed, in the form of a string, to use.
+This is used to seed the random number generator used to generate the attraction matrix of the simulation.
+The initial particle positions will be random each time.
