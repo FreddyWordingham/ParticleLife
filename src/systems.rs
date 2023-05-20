@@ -1,5 +1,5 @@
 use super::*;
-use bevy::{prelude::*, sprite::MaterialMesh2dBundle, window::PrimaryWindow};
+use bevy::{math::Vec3Swizzles, prelude::*, sprite::MaterialMesh2dBundle, window::PrimaryWindow};
 use ndarray::prelude::*;
 use rand::prelude::*;
 
@@ -66,41 +66,32 @@ pub fn update_velocities(
                 continue;
             }
 
-            let mut dx = transform_j.translation.x - transform_i.translation.x;
-            let mut dy = transform_j.translation.y - transform_i.translation.y;
-
-            if dx.abs() > 2.0 * R_MAX {
-                dx -= width * dx.signum();
+            let mut delta = (transform_j.translation - transform_i.translation).xy();
+            if delta.x.abs() > 2.0 * R_MAX {
+                delta.x -= width * delta.x.signum();
             }
-            if dy.abs() > 2.0 * R_MAX {
-                dy -= height * dy.signum();
+            if delta.y.abs() > 2.0 * R_MAX {
+                delta.y -= height * delta.y.signum();
             }
 
-            let r = (dx * dx + dy * dy).sqrt();
-
+            let r = delta.distance(Vec2::ZERO);
             if r <= 0.0 || r >= R_MAX {
                 continue;
             }
 
             let k = attraction_matrix.0[species_i.0 as usize][species_j.0 as usize];
-            let f = force(r / R_MAX, k);
-            total_force.x += f * dx / r;
-            total_force.y += f * dy / r;
+            total_force += force(r / R_MAX, k) * delta / r;
         }
 
-        total_force.x *= R_MAX;
-        total_force.y *= R_MAX;
+        total_force *= R_MAX;
         total_forces.push(total_force);
     }
 
     let dt = time.delta_seconds();
     let friction_coefficient: f32 = 2.0f32.powf(-dt / FRICTION_HALF_LIFE);
     for ((_transform, mut velocity, _species), total_force) in query.iter_mut().zip(total_forces) {
-        velocity.0.x *= friction_coefficient;
-        velocity.0.y *= friction_coefficient;
-
-        velocity.0.x += total_force.x * dt / PARTICLE_MASS;
-        velocity.0.y += total_force.y * dt / PARTICLE_MASS;
+        velocity.0 *= friction_coefficient;
+        velocity.0 += total_force * dt / PARTICLE_MASS;
     }
 }
 
@@ -198,11 +189,8 @@ pub fn update_velocities_with_grid(
     for ((_entity, _transform, mut velocity, _species), total_force) in
         query.iter_mut().zip(total_forces)
     {
-        velocity.0.x *= friction_coefficient;
-        velocity.0.y *= friction_coefficient;
-
-        velocity.0.x += total_force.x * dt / PARTICLE_MASS;
-        velocity.0.y += total_force.y * dt / PARTICLE_MASS;
+        velocity.0 *= friction_coefficient;
+        velocity.0 += total_force * dt / PARTICLE_MASS;
     }
 }
 
