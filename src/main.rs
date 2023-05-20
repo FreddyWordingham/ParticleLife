@@ -12,12 +12,12 @@ const WINDOW_CLEAR_COLOUR: Color = Color::rgb(0.1, 0.1, 0.1);
 
 const TOTAL_SPECIES: usize = 11;
 
-const TOTAL_PARTICLES: usize = 3000;
+const TOTAL_PARTICLES: usize = 10000;
 const PARTICLE_RADIUS: f32 = 2.0;
 const PARTICLE_MASS: f32 = 1.0;
 
 const FRICTION_HALF_LIFE: f32 = 0.04;
-const R_MAX: f32 = 100.0;
+const R_MAX: f32 = 50.0;
 const BETA: f32 = 0.3;
 
 // == Main ==
@@ -60,15 +60,15 @@ impl Default for AttractionMatrix {
         let mut coefficients = [[0.0; TOTAL_SPECIES]; TOTAL_SPECIES];
         for i in 0..TOTAL_SPECIES {
             for j in 0..TOTAL_SPECIES {
-                // coefficients[i][j] = rng.gen_range(-1.0..1.0);
+                coefficients[i][j] = rng.gen_range(-1.0..1.0);
 
-                if i == j {
-                    coefficients[i][j] = 1.0;
-                } else if j == (i + 1) {
-                    coefficients[i][j] = 0.4;
-                } else {
-                    coefficients[i][j] = 0.0;
-                }
+                // if i == j {
+                //     coefficients[i][j] = 1.0;
+                // } else if j == (i + 1) {
+                //     coefficients[i][j] = 0.4;
+                // } else {
+                //     coefficients[i][j] = 0.0;
+                // }
             }
             println!("");
         }
@@ -242,15 +242,15 @@ fn restrain_particles(
     let d = 250.0;
     for (mut velocity, transform) in velocity_transform_query.iter_mut() {
         if transform.translation.x < d {
-            velocity.0 -= 100.0 * dt;
+            velocity.0.x -= 1000.0 * dt;
         } else if transform.translation.x > (width - d) {
-            velocity.0 += 100.0 * dt;
+            velocity.0.x += 1000.0 * dt;
         }
 
         if transform.translation.y < d {
-            velocity.0 -= 100.0 * dt;
+            velocity.0.y -= 1000.0 * dt;
         } else if transform.translation.y > (height - d) {
-            velocity.0 += 100.0 * dt;
+            velocity.0.y += 1000.0 * dt;
         }
     }
 }
