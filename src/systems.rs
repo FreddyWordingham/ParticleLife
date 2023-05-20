@@ -1,5 +1,5 @@
 use super::*;
-use bevy::{math::Vec3Swizzles, prelude::*, sprite::MaterialMesh2dBundle, window::PrimaryWindow};
+use bevy::{prelude::*, sprite::MaterialMesh2dBundle, window::PrimaryWindow};
 use ndarray::prelude::*;
 use rand::prelude::*;
 
@@ -49,9 +49,14 @@ pub fn spawn_particles(
 
 pub fn update_velocities(
     mut query: Query<(&Transform, &mut Velocity, &Species)>,
+    window_query: Query<&Window, With<PrimaryWindow>>,
     time: Res<Time>,
     attraction_matrix: Res<AttractionMatrix>,
 ) {
+    let windows = window_query.get_single().unwrap();
+    let width = windows.width();
+    let height = windows.height();
+
     let mut total_forces = Vec::with_capacity(query.iter().len());
     for (i, (transform_i, _velocity_i, species_i)) in query.iter().enumerate() {
         let mut total_force = Vec2::new(0.0, 0.0);
@@ -61,8 +66,16 @@ pub fn update_velocities(
                 continue;
             }
 
-            let dx = transform_j.translation.x - transform_i.translation.x;
-            let dy = transform_j.translation.y - transform_i.translation.y;
+            let mut dx = transform_j.translation.x - transform_i.translation.x;
+            let mut dy = transform_j.translation.y - transform_i.translation.y;
+
+            if dx.abs() > 2.0 * R_MAX {
+                dx -= width * dx.signum();
+            }
+            if dy.abs() > 2.0 * R_MAX {
+                dy -= height * dy.signum();
+            }
+
             let r = (dx * dx + dy * dy).sqrt();
 
             if r <= 0.0 || r >= R_MAX {
@@ -102,15 +115,14 @@ pub fn update_velocities_with_grid(
     let height = windows.height();
 
     let rx = (width / R_MAX).ceil() as usize;
-    let dx = width / rx as f32;
+    let cell_width = width / rx as f32;
     let ry = (height / R_MAX).ceil() as usize;
-    let dy = height / ry as f32;
+    let cell_height = height / ry as f32;
 
     let mut grid = Array2::from_elem((rx, ry), Vec::new());
-    for (id, transform, _velocity, species) in query.iter() {
-        let x = ((transform.translation.x / dx).floor() as usize).clamp(0, rx - 1);
-        let y = ((transform.translation.y / dy).floor() as usize).clamp(0, ry - 1);
-        // grid[[x, y]].push((transform.translation.xy(), species.0));
+    for (id, transform, _velocity, _species) in query.iter() {
+        let x = ((transform.translation.x / cell_width).floor() as usize).clamp(0, rx - 1);
+        let y = ((transform.translation.y / cell_height).floor() as usize).clamp(0, ry - 1);
         grid[[x, y]].push(id);
     }
 
@@ -123,11 +135,11 @@ pub fn update_velocities_with_grid(
     // println!();
 
     let mut total_forces = Vec::with_capacity(query.iter().len());
-    for (id, transform, _velocity, species) in query.iter() {
+    for (entity_i, transform_i, _velocity_i, species_i) in query.iter() {
         let mut total_force = Vec2::new(0.0, 0.0);
 
-        let x = ((transform.translation.x / dx).floor() as usize).clamp(0, rx - 1);
-        let y = ((transform.translation.y / dy).floor() as usize).clamp(0, ry - 1);
+        let x = ((transform_i.translation.x / cell_width).floor() as usize).clamp(0, rx - 1);
+        let y = ((transform_i.translation.y / cell_height).floor() as usize).clamp(0, ry - 1);
 
         let x_prev = (x + rx - 1) % (rx - 1);
         let x_next = (x + 1) % (rx - 1);
@@ -145,16 +157,16 @@ pub fn update_velocities_with_grid(
             (x, y_next),
             (x_next, y_next),
         ];
-        for (sx, sy) in neighbors {
-            for jd in grid[[sx, sy]].iter() {
-                if id == *jd {
+        for n in neighbors {
+            for entity_j in grid[n].iter() {
+                if entity_i == *entity_j {
                     continue;
                 }
 
-                let (jd, transform_j, _velocity, other_species) = query.get(*jd).unwrap();
+                let (_, transform_j, _velocity_j, species_j) = query.get(*entity_j).unwrap();
 
-                let mut dx = transform_j.translation.x - transform.translation.x;
-                let mut dy = transform_j.translation.y - transform.translation.y;
+                let mut dx = transform_j.translation.x - transform_i.translation.x;
+                let mut dy = transform_j.translation.y - transform_i.translation.y;
 
                 if dx.abs() > 2.0 * R_MAX {
                     dx -= width * dx.signum();
@@ -169,7 +181,7 @@ pub fn update_velocities_with_grid(
                     continue;
                 }
 
-                let k = attraction_matrix.0[species.0 as usize][other_species.0 as usize];
+                let k = attraction_matrix.0[species_i.0 as usize][species_j.0 as usize];
                 let f = force(r / R_MAX, k);
                 total_force.x += f * dx / r;
                 total_force.y += f * dy / r;
@@ -183,7 +195,7 @@ pub fn update_velocities_with_grid(
 
     let dt = time.delta_seconds();
     let friction_coefficient: f32 = 2.0f32.powf(-dt / FRICTION_HALF_LIFE);
-    for ((entity, _transform, mut velocity, _species), total_force) in
+    for ((_entity, _transform, mut velocity, _species), total_force) in
         query.iter_mut().zip(total_forces)
     {
         velocity.0.x *= friction_coefficient;
@@ -217,7 +229,6 @@ pub fn confine_particles_by_wrap(
     let width = windows.width();
     let height = windows.height();
 
-    let f = 0.125;
     for mut transform in transform_query.iter_mut() {
         if transform.translation.x < 0.0 {
             transform.translation.x = width;
