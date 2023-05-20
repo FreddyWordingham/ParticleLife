@@ -92,7 +92,7 @@ pub fn update_velocities(
 }
 
 pub fn update_velocities_with_grid(
-    mut query: Query<(&Transform, &mut Velocity, &Species)>,
+    mut query: Query<(Entity, &Transform, &mut Velocity, &Species)>,
     window_query: Query<&Window, With<PrimaryWindow>>,
     time: Res<Time>,
     attraction_matrix: Res<AttractionMatrix>,
@@ -107,10 +107,11 @@ pub fn update_velocities_with_grid(
     let dy = height / ry as f32;
 
     let mut grid = Array2::from_elem((rx, ry), Vec::new());
-    for (transform, _velocity, species) in query.iter() {
+    for (id, transform, _velocity, species) in query.iter() {
         let x = ((transform.translation.x / dx).floor() as usize).clamp(0, rx - 1);
         let y = ((transform.translation.y / dy).floor() as usize).clamp(0, ry - 1);
-        grid[[x, y]].push((transform.translation.xy(), species.0));
+        // grid[[x, y]].push((transform.translation.xy(), species.0));
+        grid[[x, y]].push(id);
     }
 
     // for yi in 0..ry {
@@ -122,7 +123,7 @@ pub fn update_velocities_with_grid(
     // println!();
 
     let mut total_forces = Vec::with_capacity(query.iter().len());
-    for (transform, _velocity, species) in query.iter_mut() {
+    for (id, transform, _velocity, species) in query.iter() {
         let mut total_force = Vec2::new(0.0, 0.0);
 
         let x = ((transform.translation.x / dx).floor() as usize).clamp(0, rx - 1);
@@ -145,16 +146,30 @@ pub fn update_velocities_with_grid(
             (x_next, y_next),
         ];
         for (sx, sy) in neighbors {
-            for (position, other_species) in grid[[sx, sy]].iter() {
-                let dx = position.x - transform.translation.x;
-                let dy = position.y - transform.translation.y;
+            for jd in grid[[sx, sy]].iter() {
+                if id == *jd {
+                    continue;
+                }
+
+                let (jd, transform_j, _velocity, other_species) = query.get(*jd).unwrap();
+
+                let mut dx = transform_j.translation.x - transform.translation.x;
+                let mut dy = transform_j.translation.y - transform.translation.y;
+
+                if dx.abs() > 2.0 * R_MAX {
+                    dx -= width * dx.signum();
+                }
+                if dy.abs() > 2.0 * R_MAX {
+                    dy -= height * dy.signum();
+                }
+
                 let r = (dx * dx + dy * dy).sqrt();
 
                 if r <= 0.0 || r >= R_MAX {
                     continue;
                 }
 
-                let k = attraction_matrix.0[species.0 as usize][*other_species as usize];
+                let k = attraction_matrix.0[species.0 as usize][other_species.0 as usize];
                 let f = force(r / R_MAX, k);
                 total_force.x += f * dx / r;
                 total_force.y += f * dy / r;
@@ -168,7 +183,9 @@ pub fn update_velocities_with_grid(
 
     let dt = time.delta_seconds();
     let friction_coefficient: f32 = 2.0f32.powf(-dt / FRICTION_HALF_LIFE);
-    for ((_transform, mut velocity, _species), total_force) in query.iter_mut().zip(total_forces) {
+    for ((entity, _transform, mut velocity, _species), total_force) in
+        query.iter_mut().zip(total_forces)
+    {
         velocity.0.x *= friction_coefficient;
         velocity.0.y *= friction_coefficient;
 
@@ -192,7 +209,31 @@ pub fn update_positions(mut query: Query<(&mut Transform, &Velocity)>, time: Res
     }
 }
 
-pub fn confine_particles(
+pub fn confine_particles_by_wrap(
+    mut transform_query: Query<&mut Transform>,
+    window_query: Query<&Window, With<PrimaryWindow>>,
+) {
+    let windows = window_query.get_single().unwrap();
+    let width = windows.width();
+    let height = windows.height();
+
+    let f = 0.125;
+    for mut transform in transform_query.iter_mut() {
+        if transform.translation.x < 0.0 {
+            transform.translation.x = width;
+        } else if transform.translation.x > width {
+            transform.translation.x = 0.0;
+        }
+
+        if transform.translation.y < 0.0 {
+            transform.translation.y = height;
+        } else if transform.translation.y > height {
+            transform.translation.y = 0.0;
+        }
+    }
+}
+
+pub fn confine_particles_by_respawn(
     mut transform_query: Query<&mut Transform>,
     window_query: Query<&Window, With<PrimaryWindow>>,
 ) {

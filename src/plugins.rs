@@ -10,7 +10,7 @@ impl Plugin for SimulationPlugin {
             .add_startup_system(spawn_camera)
             .add_startup_system(spawn_particles)
             .add_systems((update_velocities_with_grid, update_positions).chain())
-            .add_system(confine_particles)
+            .add_system(confine_particles_by_wrap)
             // .add_system(restrain_particles)
             .add_system(close_on_esc);
     }
