@@ -1,5 +1,6 @@
 use super::*;
-use bevy::{prelude::*, sprite::MaterialMesh2dBundle, window::PrimaryWindow};
+use bevy::{math::Vec3Swizzles, prelude::*, sprite::MaterialMesh2dBundle, window::PrimaryWindow};
+use ndarray::prelude::*;
 use rand::prelude::*;
 
 pub fn spawn_camera(mut commands: Commands, query: Query<&Window, With<PrimaryWindow>>) {
@@ -72,6 +73,92 @@ pub fn update_velocities(
             let f = force(r / R_MAX, k);
             total_force.x += f * dx / r;
             total_force.y += f * dy / r;
+        }
+
+        total_force.x *= R_MAX;
+        total_force.y *= R_MAX;
+        total_forces.push(total_force);
+    }
+
+    let dt = time.delta_seconds();
+    let friction_coefficient: f32 = 2.0f32.powf(-dt / FRICTION_HALF_LIFE);
+    for ((_transform, mut velocity, _species), total_force) in query.iter_mut().zip(total_forces) {
+        velocity.0.x *= friction_coefficient;
+        velocity.0.y *= friction_coefficient;
+
+        velocity.0.x += total_force.x * dt / PARTICLE_MASS;
+        velocity.0.y += total_force.y * dt / PARTICLE_MASS;
+    }
+}
+
+pub fn update_velocities_with_grid(
+    mut query: Query<(&Transform, &mut Velocity, &Species)>,
+    window_query: Query<&Window, With<PrimaryWindow>>,
+    time: Res<Time>,
+    attraction_matrix: Res<AttractionMatrix>,
+) {
+    let windows = window_query.get_single().unwrap();
+    let width = windows.width();
+    let height = windows.height();
+
+    let rx = (width / R_MAX).ceil() as usize;
+    let dx = width / rx as f32;
+    let ry = (height / R_MAX).ceil() as usize;
+    let dy = height / ry as f32;
+
+    let mut grid = Array2::from_elem((rx, ry), Vec::new());
+    for (transform, _velocity, species) in query.iter() {
+        let x = ((transform.translation.x / dx).floor() as usize).clamp(0, rx - 1);
+        let y = ((transform.translation.y / dy).floor() as usize).clamp(0, ry - 1);
+        grid[[x, y]].push((transform.translation.xy(), species.0));
+    }
+
+    // for yi in 0..ry {
+    //     for xi in 0..rx {
+    //         print!(" {}", grid[[xi, yi]].len());
+    //     }
+    //     println!();
+    // }
+    // println!();
+
+    let mut total_forces = Vec::with_capacity(query.iter().len());
+    for (transform, _velocity, species) in query.iter_mut() {
+        let mut total_force = Vec2::new(0.0, 0.0);
+
+        let x = ((transform.translation.x / dx).floor() as usize).clamp(0, rx - 1);
+        let y = ((transform.translation.y / dy).floor() as usize).clamp(0, ry - 1);
+
+        let x_prev = (x + rx - 1) % (rx - 1);
+        let x_next = (x + 1) % (rx - 1);
+        let y_prev = (y + ry - 1) % (ry - 1);
+        let y_next = (y + 1) % (ry - 1);
+
+        let neighbors = vec![
+            (x_prev, y_prev),
+            (x, y_prev),
+            (x_next, y_prev),
+            (x_prev, y),
+            (x, y),
+            (x_next, y),
+            (x_prev, y_next),
+            (x, y_next),
+            (x_next, y_next),
+        ];
+        for (sx, sy) in neighbors {
+            for (position, other_species) in grid[[sx, sy]].iter() {
+                let dx = position.x - transform.translation.x;
+                let dy = position.y - transform.translation.y;
+                let r = (dx * dx + dy * dy).sqrt();
+
+                if r <= 0.0 || r >= R_MAX {
+                    continue;
+                }
+
+                let k = attraction_matrix.0[species.0 as usize][*other_species as usize];
+                let f = force(r / R_MAX, k);
+                total_force.x += f * dx / r;
+                total_force.y += f * dy / r;
+            }
         }
 
         total_force.x *= R_MAX;

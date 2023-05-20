@@ -5,4 +5,5 @@ edition = "2021"
 
 [dependencies]
 bevy = "0.10.1"
+ndarray = "0.15.6"
 rand = {version = "0.8.5", features = ["small_rng"]}
