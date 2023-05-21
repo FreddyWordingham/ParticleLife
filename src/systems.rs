@@ -2,6 +2,7 @@ use super::*;
 use bevy::{math::Vec3Swizzles, prelude::*, sprite::MaterialMesh2dBundle, window::PrimaryWindow};
 use ndarray::prelude::*;
 use rand::prelude::*;
+use std::f32::consts::PI;
 
 pub fn spawn_camera(mut commands: Commands, query: Query<&Window, With<PrimaryWindow>>) {
     let windows = query.get_single().unwrap();
@@ -30,6 +31,42 @@ pub fn spawn_particles(
         let y = (random::<f32>() + 0.5) * (height * f);
 
         let species = Species(random::<u8>() % TOTAL_SPECIES as u8);
+        let colour = species.colour();
+
+        commands.spawn((
+            species,
+            Velocity(Vec2::new(0.0, 0.0)),
+            MaterialMesh2dBundle {
+                mesh: meshes
+                    .add(shape::Circle::new(PARTICLE_RADIUS).into())
+                    .into(),
+                material: materials.add(ColorMaterial::from(colour)),
+                transform: Transform::from_translation(Vec3::new(x, y, -(i as f32))),
+                ..default()
+            },
+        ));
+    }
+}
+
+pub fn spawn_particles_circle(
+    mut commands: Commands,
+    query: Query<&Window, With<PrimaryWindow>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+) {
+    let windows = query.get_single().unwrap();
+    let width = windows.width();
+    let height = windows.height();
+
+    let d_theta = 2.0 * PI / TOTAL_SPECIES as f32;
+    let f = 0.1;
+    for i in 0..TOTAL_PARTICLES {
+        let theta = random::<f32>() * 2.0 * PI;
+
+        let x = (theta.cos() * width * f) + (width * 0.5);
+        let y = (theta.sin() * height * f) + (height * 0.5);
+
+        let species = Species((theta / d_theta) as u8);
         let colour = species.colour();
 
         commands.spawn((
