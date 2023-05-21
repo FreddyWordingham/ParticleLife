@@ -24,9 +24,11 @@ impl AttractionMatrix {
         for i in 0..TOTAL_SPECIES {
             for j in 0..TOTAL_SPECIES {
                 if i == j {
-                    coefficients[i][j] = 1.0;
+                    coefficients[i][j] = 2.0;
                 } else if j == (i + 1) {
-                    coefficients[i][j] = 0.5;
+                    coefficients[i][j] = 0.2;
+                } else if j == (i - 1) {
+                    coefficients[i][j] = 0.0;
                 } else {
                     coefficients[i][j] = 0.0;
                 }

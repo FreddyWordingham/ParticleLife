@@ -132,10 +132,10 @@ pub fn update_velocities_with_grid(
         let x = ((transform_i.translation.x / cell_width).floor() as usize).clamp(0, rx - 1);
         let y = ((transform_i.translation.y / cell_height).floor() as usize).clamp(0, ry - 1);
 
-        let x_prev = (x + rx - 1) % (rx - 1);
-        let x_next = (x + 1) % (rx - 1);
-        let y_prev = (y + ry - 1) % (ry - 1);
-        let y_next = (y + 1) % (ry - 1);
+        let x_prev = (x + rx - 1) % rx;
+        let x_next = (x + 1) % rx;
+        let y_prev = (y + ry - 1) % ry;
+        let y_next = (y + 1) % ry;
 
         let neighbors = vec![
             (x_prev, y_prev),
@@ -179,8 +179,7 @@ pub fn update_velocities_with_grid(
             }
         }
 
-        total_force.x *= R_MAX;
-        total_force.y *= R_MAX;
+        total_force *= R_MAX;
         total_forces.push(total_force);
     }
 
