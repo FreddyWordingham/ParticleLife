@@ -95,7 +95,7 @@ pub fn update_velocities(
     let height = windows.height();
 
     let mut total_forces = Vec::with_capacity(query.iter().len());
-    for (i, (transform_i, _velocity_i, species_i)) in query.iter().enumerate() {
+    for (i, (transform_i, _velocity, species_i)) in query.iter().enumerate() {
         let mut total_force = Vec2::new(0.0, 0.0);
 
         for (j, (transform_j, _velocity_j, species_j)) in query.iter().enumerate() {
@@ -163,7 +163,7 @@ pub fn update_velocities_with_grid(
     // println!();
 
     let mut total_forces = Vec::with_capacity(query.iter().len());
-    for (entity_i, transform_i, _velocity_i, species_i) in query.iter() {
+    for (entity_i, transform_i, _velocity, species_i) in query.iter() {
         let mut total_force = Vec2::new(0.0, 0.0);
 
         let x = ((transform_i.translation.x / cell_width).floor() as usize).clamp(0, rx - 1);
@@ -230,11 +230,83 @@ pub fn update_velocities_with_grid(
     }
 }
 
-pub fn force(r: f32, k: f32) -> f32 {
+pub fn update_velocities_with_rasterisation(
+    mut query: Query<(Entity, &Transform, &mut Velocity, &Species)>,
+    window_query: Query<&Window, With<PrimaryWindow>>,
+    time: Res<Time>,
+    attraction_matrix: Res<AttractionMatrix>,
+) {
+    let windows = window_query.get_single().unwrap();
+    let width = windows.width();
+    let height = windows.height();
+
+    let rx = (width / R_MAX).ceil() as usize;
+    let cell_width = width / rx as f32;
+    let ry = (height / R_MAX).ceil() as usize;
+    let cell_height = height / ry as f32;
+
+    let mut grid = Array2::from_elem((rx, ry), Vec::new());
+    let mut raster = Array3::<f32>::zeros((rx, ry, TOTAL_SPECIES));
+    for (id, transform, _velocity, species) in query.iter() {
+        let x = ((transform.translation.x / cell_width).floor() as usize).clamp(0, rx - 1);
+        let y = ((transform.translation.y / cell_height).floor() as usize).clamp(0, ry - 1);
+        grid[[x, y]].push(id);
+        raster[[x, y, species.0 as usize]] += 1.0;
+    }
+
+    let mut total_forces = Vec::with_capacity(query.iter().len());
+    for (_entity_i, transform_i, _velocity, species_i) in query.iter() {
+        let mut total_force = Vec2::new(0.0, 0.0);
+
+        let x = ((transform_i.translation.x / cell_width).floor() as usize).clamp(0, rx - 1);
+        let y = ((transform_i.translation.y / cell_height).floor() as usize).clamp(0, ry - 1);
+
+        let x_prev = (x + rx - 1) % rx;
+        let x_next = (x + 1) % rx;
+        let y_prev = (y + ry - 1) % ry;
+        let y_next = (y + 1) % ry;
+
+        let neighbors = vec![
+            ((x, y_prev), (0.0, -1.0)),
+            ((x_prev, y), (-1.0, 0.0)),
+            ((x_next, y), (1.0, 0.0)),
+            ((x, y_next), (0.0, 1.0)),
+        ];
+        for ((xi, yi), (fx, fy)) in neighbors {
+            for n in 0..TOTAL_SPECIES {
+                let r = raster[(xi, yi, n)];
+                let k = attraction_matrix.0[species_i.0 as usize][n];
+                let f = r_force(r, k);
+
+                total_force.x += f * fx;
+                total_force.y += f * fy;
+            }
+        }
+
+        total_force *= R_MAX;
+        total_forces.push(total_force);
+    }
+
+    let dt = time.delta_seconds();
+    let friction_coefficient: f32 = 2.0f32.powf(-dt / FRICTION_HALF_LIFE);
+    for ((_entity, _transform, mut velocity, _species), total_force) in
+        query.iter_mut().zip(total_forces)
+    {
+        velocity.0 *= friction_coefficient;
+        velocity.0 += total_force * dt / PARTICLE_MASS;
+    }
+}
+
+fn r_force(r: f32, k: f32) -> f32 {
+    k * r
+}
+
+fn force(r: f32, k: f32) -> f32 {
     if r < BETA {
         return r / BETA - 1.0;
     }
-    return k * (1.0 - (2.0 * r - 1.0 - BETA).abs() / (1.0 - BETA));
+
+    k * (1.0 - (2.0 * r - 1.0 - BETA).abs() / (1.0 - BETA))
 }
 
 pub fn update_positions(mut query: Query<(&mut Transform, &Velocity)>, time: Res<Time>) {
