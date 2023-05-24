@@ -1,4 +1,8 @@
 use super::*;
+use bevy::core_pipeline::{
+    bloom::{BloomCompositeMode, BloomPrefilterSettings, BloomSettings},
+    tonemapping::Tonemapping,
+};
 use bevy::{math::Vec3Swizzles, prelude::*, sprite::MaterialMesh2dBundle, window::PrimaryWindow};
 use ndarray::prelude::*;
 use rand::prelude::*;
@@ -13,6 +17,36 @@ pub fn spawn_camera(mut commands: Commands, query: Query<&Window, With<PrimaryWi
         transform: Transform::from_xyz(width * 0.5, height * 0.5, 0.0),
         ..default()
     });
+}
+
+pub fn spawn_camera_with_bloom(mut commands: Commands, query: Query<&Window, With<PrimaryWindow>>) {
+    let windows = query.get_single().unwrap();
+    let width = windows.width();
+    let height = windows.height();
+
+    commands.spawn((
+        Camera2dBundle {
+            camera: Camera {
+                hdr: true,
+                ..default()
+            },
+            tonemapping: Tonemapping::TonyMcMapface,
+            transform: Transform::from_xyz(width * 0.5, height * 0.5, 0.0),
+            ..default()
+        },
+        BloomSettings {
+            intensity: 1.0,
+            low_frequency_boost: 1.0,
+            low_frequency_boost_curvature: 1.0,
+            high_pass_frequency: 0.25,
+            composite_mode: BloomCompositeMode::Additive, // EnergyConserving or Additive
+            prefilter_settings: BloomPrefilterSettings {
+                threshold: 0.5,
+                threshold_softness: 0.5,
+            },
+            ..default()
+        },
+    ));
 }
 
 pub fn spawn_particles(
