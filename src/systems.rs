@@ -360,3 +360,17 @@ pub fn restrain_particles(
         }
     }
 }
+
+pub fn set_rate_of_change(
+    mut rate_of_change: ResMut<RateOfChange>,
+    keyboard_input: Res<Input<KeyCode>>,
+    time: Res<Time>,
+) {
+    if keyboard_input.pressed(KeyCode::Up) || keyboard_input.pressed(KeyCode::W) {
+        rate_of_change.0 += time.delta_seconds();
+        println!("{}", rate_of_change.0);
+    } else if keyboard_input.pressed(KeyCode::Down) || keyboard_input.pressed(KeyCode::S) {
+        rate_of_change.0 -= time.delta_seconds();
+        println!("{}", rate_of_change.0);
+    }
+}
