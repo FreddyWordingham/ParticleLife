@@ -3,6 +3,9 @@ use bevy::prelude::*;
 use rand::prelude::*;
 
 #[derive(Resource)]
+pub struct RateOfChange(pub f32);
+
+#[derive(Resource)]
 pub struct AttractionMatrix(pub [[f32; TOTAL_SPECIES]; TOTAL_SPECIES]);
 
 impl AttractionMatrix {

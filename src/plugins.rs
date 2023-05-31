@@ -7,6 +7,7 @@ impl Plugin for SimulationPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(ClearColor(WINDOW_CLEAR_COLOUR))
             .insert_resource(AttractionMatrix::random())
+            .insert_resource(RateOfChange(DEFAULT_RATE_OF_CHANGE))
             .add_startup_system(spawn_camera_with_bloom)
             .add_startup_system(spawn_particles)
             .add_startup_system(spawn_particles_circle)
