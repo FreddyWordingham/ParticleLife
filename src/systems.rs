@@ -272,8 +272,12 @@ fn force(r: f32, k: f32) -> f32 {
     k * (1.0 - (2.0 * r - 1.0 - BETA).abs() / (1.0 - BETA))
 }
 
-pub fn update_positions(mut query: Query<(&mut Transform, &Velocity)>, time: Res<Time>) {
-    let dt = time.delta_seconds();
+pub fn update_positions(
+    mut query: Query<(&mut Transform, &Velocity)>,
+    time: Res<Time>,
+    rate_of_change: Res<RateOfChange>,
+) {
+    let dt = time.delta_seconds() * rate_of_change.0;
     for (mut transform, velocity) in query.iter_mut() {
         transform.translation.x += velocity.0.x * dt;
         transform.translation.y += velocity.0.y * dt;

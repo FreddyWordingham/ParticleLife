@@ -14,4 +14,4 @@ pub const FRICTION_HALF_LIFE: f32 = 0.04;
 pub const R_MAX: f32 = 50.0;
 pub const BETA: f32 = 0.3;
 
-pub const DEFAULT_RATE_OF_CHANGE: f32 = 1.0;
+pub const DEFAULT_RATE_OF_CHANGE: f32 = 0.1;
