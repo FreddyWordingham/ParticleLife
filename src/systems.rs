@@ -367,10 +367,13 @@ pub fn set_rate_of_change(
     time: Res<Time>,
 ) {
     if keyboard_input.pressed(KeyCode::Up) || keyboard_input.pressed(KeyCode::W) {
-        rate_of_change.0 += time.delta_seconds();
+        rate_of_change.0 += time.delta_seconds() * 10.0;
         println!("{}", rate_of_change.0);
     } else if keyboard_input.pressed(KeyCode::Down) || keyboard_input.pressed(KeyCode::S) {
-        rate_of_change.0 -= time.delta_seconds();
+        rate_of_change.0 -= time.delta_seconds() * 10.0;
+        println!("{}", rate_of_change.0);
+    } else if keyboard_input.just_pressed(KeyCode::Space) {
+        rate_of_change.0 = 0.0;
         println!("{}", rate_of_change.0);
     }
 }
