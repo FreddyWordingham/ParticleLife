@@ -7,7 +7,7 @@ pub const WINDOW_CLEAR_COLOUR: Color = Color::rgb(0.0, 0.0, 0.0);
 pub const TOTAL_SPECIES: usize = 9;
 
 pub const TOTAL_PARTICLES: usize = 1000;
-pub const PARTICLE_RADIUS: f32 = 2.4;
+pub const PARTICLE_RADIUS: f32 = 2.0;
 pub const PARTICLE_MASS: f32 = 0.1;
 
 pub const FRICTION_HALF_LIFE: f32 = 0.04;
