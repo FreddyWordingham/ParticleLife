@@ -1,4 +1,5 @@
 use bevy::{prelude::*, window::WindowResolution};
+
 use particle_life::*;
 
 fn main() {
